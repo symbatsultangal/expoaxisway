@@ -48,3 +48,6 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Phase 6 — Frontend Implementation
+
+The frontend implementation follows the architecture defined in Phase 4 and does not introduce additional structural changes.
