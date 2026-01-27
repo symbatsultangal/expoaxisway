@@ -51,3 +51,15 @@ Join our community of developers creating universal apps.
 ## Phase 6 — Frontend Implementation
 
 The frontend implementation follows the architecture defined in Phase 4 and does not introduce additional structural changes.
+## Phase 3 — API & Access Pattern Design
+
+API contracts and access patterns are defined in GEMINI.md and were validated against the existing Supabase schema and RLS policies.
+# Phase 7 — Permission & Integration Testing
+
+This phase defines role-based test scenarios, negative access cases, and storage access validation focused on Supabase RLS enforcement.
+# Phase 8 — Performance, Security & DX Hardening
+
+This phase documents performance considerations, RLS optimization notes, security hardening, and developer experience improvements.
+## Phase 9 — Production Readiness & Future Evolution
+
+This phase covers environment separation, migration and rollback strategy, backups, monitoring, and rules for safe long-term schema evolution.
