@@ -1,98 +1,173 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { useAuth } from '@/providers/AuthProvider';
+import { requestsApi } from '@/services/api/requests';
+import { volunteersApi } from '@/services/api/volunteers';
+import { useQuery } from '@tanstack/react-query';
+import React from 'react';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const { user, isDisabledPerson, isVolunteer, isAdmin, signOut } = useAuth();
+  const router = useRouter();
+
+  // Queries
+  const { data: myRequests, refetch: refetchRequests, isLoading: loadingRequests } = useQuery({
+    queryKey: ['myRequests'],
+    queryFn: () => requestsApi.listMine(user?.id!),
+    enabled: !!user && isDisabledPerson,
+  });
+
+  const { data: myAssignments, refetch: refetchAssignments, isLoading: loadingAssignments } = useQuery({
+    queryKey: ['myAssignments'],
+    queryFn: () => volunteersApi.getMyAssignments(user?.id!, 'active'),
+    enabled: !!user && isVolunteer,
+  });
+
+  const onRefresh = React.useCallback(() => {
+    if (isDisabledPerson) refetchRequests();
+    if (isVolunteer) refetchAssignments();
+  }, [isDisabledPerson, isVolunteer, refetchRequests, refetchAssignments]);
+
+  const renderRoleContent = () => {
+    if (isAdmin) {
+      return (
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Admin Dashboard</ThemedText>
+          <Card 
+            title="Verifications" 
+            description="Manage pending verifications"
+            footer={
+              <Button variant="outline" onPress={() => console.log('Nav to verifications')}>Review</Button>
+            }
+          >
+            <ThemedText>System overview active.</ThemedText>
+          </Card>
+        </View>
+      );
+    }
+  };
+
+  const renderDisabledContent = () => {
+    if (!isDisabledPerson) return null;
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle">My Help Requests</ThemedText>
+          <Button size="sm" onPress={() => router.push('/requests/create')}>+ New Request</Button>
+        </View>
+
+        {loadingRequests ? (
+          <ThemedText>Loading...</ThemedText>
+        ) : myRequests && myRequests.length > 0 ? (
+          myRequests.map((req: any) => (
+            <Card key={req.id} title={`Request #${req.id.slice(0,4)}`} description={req.description}>
+               <View style={styles.reqFooter}>
+                 <ThemedText style={styles.statusBadge}>{req.status.toUpperCase()}</ThemedText>
+                 <Button variant="link" onPress={() => router.push(`/requests/${req.id}`)}>View Details</Button>
+               </View>
+            </Card>
+          ))
+        ) : (
+          <Card description="You have no active requests. Need help?" style={styles.emptyCard}>
+             <Button onPress={() => router.push('/requests/create')}>Request Help</Button>
+          </Card>
+        )}
+      </View>
+    );
+  };
+
+  const renderVolunteerContent = () => {
+    if (!isVolunteer) return null;
+    return (
+      <View style={styles.section}>
+         <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle">My Assignments</ThemedText>
+          <Button size="sm" variant="secondary" onPress={() => router.push('/(tabs)/explore')}>Find Requests</Button>
+        </View>
+
+        {loadingAssignments ? (
+          <ThemedText>Loading...</ThemedText>
+        ) : myAssignments && myAssignments.length > 0 ? (
+           myAssignments.map((assign: any) => (
+            <Card 
+              key={assign.id} 
+              title="Assigned Task" 
+              description={assign.request.description}
+            >
+               <View style={styles.reqFooter}>
+                 <ThemedText style={styles.statusBadge}>{assign.request.status.toUpperCase()}</ThemedText>
+                 <Button variant="link" onPress={() => router.push(`/requests/${assign.request.id}`)}>View Details</Button>
+               </View>
+            </Card>
+           ))
+        ) : (
+          <Card description="You have no active assignments.">
+            <Button variant="outline" onPress={() => router.push('/(tabs)/explore')}>Browse Feed</Button>
+          </Card>
+        )}
+      </View>
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ThemedView style={styles.container}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={loadingRequests || loadingAssignments} onRefresh={onRefresh} />}
+      >
+        <View style={styles.header}>
+          <ThemedText type="title">Hello, {user?.user_metadata?.full_name || 'User'}!</ThemedText>
+          <Button variant="ghost" size="sm" onPress={() => signOut()}>Sign Out</Button>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {renderRoleContent()}
+        {renderDisabledContent()}
+        {renderVolunteerContent()}
+
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    gap: 24,
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 10,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  section: {
+    gap: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
+  emptyCard: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  reqFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  statusBadge: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    opacity: 0.7,
+  }
 });
